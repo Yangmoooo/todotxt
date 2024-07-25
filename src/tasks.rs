@@ -1,14 +1,20 @@
 use colored::{Color, ColoredString, Colorize};
+use std::collections::HashMap;
 use std::fmt;
 use std::fs::OpenOptions;
-use std::io::{Error, ErrorKind, Read, Result, Write};
+use std::io::{self, Error, ErrorKind, Result, Write};
 use std::path::PathBuf;
 
-use crate::cli::DisplayMode;
+use crate::cli::{Action, DisplayMode};
 use crate::date::{self, Date, DateChecker};
 use crate::parser;
 use crate::priority::Priority;
 use crate::state::State;
+
+#[cfg(windows)]
+const NEWLINE: &str = "\r\n";
+#[cfg(not(windows))]
+const NEWLINE: &str = "\n";
 
 pub struct Task {
     pub state: State,
@@ -59,13 +65,32 @@ impl Task {
     fn fmt_completed_at(&self) -> Option<ColoredString> {
         self.completed_at.map(|date| date::fmt_date(&date).green())
     }
+}
 
+impl Task {
     fn can_display(&self, mode: &DisplayMode) -> bool {
         match self.state {
             State::Pendding => mode.contains(DisplayMode::PENDDING),
             State::Completed => mode.contains(DisplayMode::COMPLETED),
             State::Removed => mode.contains(DisplayMode::REMOVED),
         }
+    }
+
+    fn as_string(&self) -> String {
+        let mut s = format!(
+            "{}[{}] {} ({})",
+            self.state,
+            self.priority,
+            self.content,
+            self.created_at.format("%Y-%m-%d")
+        );
+        if let Some(due_to) = self.due_to {
+            s.push_str(&format!(" (due:{})", due_to.format("%Y-%m-%d")));
+        }
+        if let Some(completed_at) = self.completed_at {
+            s.push_str(&format!(" ({})", completed_at.format("%Y-%m-%d")));
+        }
+        s
     }
 }
 
@@ -75,7 +100,7 @@ impl fmt::Display for Task {
         let priority = self.priority.as_str();
         let content = self.content.as_str();
         let created_at = date::fmt_date(&self.created_at);
-        if matches!(self.state, State::Removed) {
+        if self.state == State::Removed {
             write!(
                 f,
                 "{}",
@@ -100,112 +125,159 @@ impl fmt::Display for Task {
                 write!(f, " ({completed_at})")?;
             }
         }
-
         Ok(())
     }
 }
 
-pub fn list_tasks(file_path: &PathBuf, mode: DisplayMode) -> Result<()> {
-    let tasks = parser::parse_file(file_path)?;
-
-    if tasks.is_empty() {
-        println!("任务清单为空");
-    } else {
-        let mut i = 0;
-        for task in tasks.iter() {
-            if task.can_display(&mode) {
-                i += 1;
-                println!("{:3} {}", i, task);
-            }
+fn get_tasks(file_path: &PathBuf) -> Result<Vec<Task>> {
+    parser::parse_file(file_path).and_then(|tasks| {
+        if tasks.is_empty() {
+            Err(Error::new(ErrorKind::InvalidInput, "任务清单为空"))
+        } else {
+            Ok(tasks)
         }
-    }
-
-    Ok(())
+    })
 }
 
+//TODO: 按 标签 列出任务
+//TODO: 按 优先级 列出任务并排序
+//TODO: 按 截止日期 列出任务并排序
+pub fn list_tasks(file_path: &PathBuf, mode: DisplayMode) -> Result<()> {
+    let tasks = get_tasks(file_path)?;
+    let mut i = 0;
+    for task in tasks {
+        if task.can_display(&mode) {
+            i += 1;
+            println!("{:3} {}", i, task);
+        }
+    }
+    Ok(())
+}
 
 pub fn add_task(file_path: &PathBuf, task: Task) -> Result<()> {
     let mut file = OpenOptions::new()
         .append(true)
         .create(true)
         .open(file_path)?;
+    writeln!(file, "{}", task.as_string())?;
+    Ok(())
+}
 
-    write!(
-        file,
-        "[{}] {} ({})",
-        task.priority,
-        task.content,
-        task.created_at.format("%Y-%m-%d")
-    )?;
-
-    match task.due_to {
-        Some(due_to) => writeln!(file, " (due:{})", due_to.format("%Y-%m-%d"))?,
-        None => writeln!(file)?,
+//TODO: 优化显示逻辑，倒序显示
+fn get_map_pendding_tasks(tasks: &[Task]) -> HashMap<usize, usize> {
+    let mut id: usize = 0;
+    let mut map = HashMap::new();
+    for (row, task) in tasks.iter().enumerate() {
+        if task.state == State::Pendding {
+            id += 1;
+            println!("{:3} {}", id, task);
+            map.insert(id, row);
+        }
     }
+    map
+}
+
+fn prompt(action: Action) -> Result<()> {
+    print!("{} ", "==>".green());
+    match action {
+        Action::Done => print!("要完成的任务 "),
+        Action::Remove => print!("要移除的任务 "),
+        Action::Delete => print!("要删除的任务 "),
+        _ => return Err(Error::new(ErrorKind::InvalidInput, "无效的操作")),
+    }
+    println!("(示例: 1 2 3, 或 1-3)");
+    print!("{} ", "==>".green());
+    io::stdout().flush()?;
 
     Ok(())
 }
 
-//TODO: 完善其余的任务操作函数
-pub fn complete_task(file_path: &PathBuf, id: usize) -> Result<()> {
-    let mut file = OpenOptions::new().read(true).open(file_path)?;
-    let mut text = String::new();
-    file.read_to_string(&mut text)?;
-
-    let tasks: Vec<_> = text.lines().collect();
-    if id == 0 || id > tasks.len() {
-        return Err(Error::new(ErrorKind::InvalidInput, "无效的任务 ID"));
+//TODO: 优化输入格式，支持 1-3 形式
+fn get_input() -> Result<Vec<usize>> {
+    let mut input = String::new();
+    io::stdin().read_line(&mut input)?;
+    let ids: Vec<usize> = input
+        .split_whitespace()
+        .filter_map(|s| s.parse().ok())
+        .collect();
+    if ids.is_empty() {
+        println!("未选择任务");
     }
 
+    Ok(ids)
+}
+
+fn write_tasks(file_path: &PathBuf, tasks: Vec<Task>) -> Result<()> {
     let mut text = String::new();
-    for (i, line) in tasks.iter().enumerate() {
-        if i + 1 == id {
-            text.push_str(&format!(
-                "✓ {} ({})",
-                line,
-                date::today().format("%Y-%m-%d")
-            ));
+    for task in tasks {
+        text.push_str(&format!("{}{}", task.as_string(), NEWLINE));
+    }
+
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(file_path)?;
+    file.write_all(text.as_bytes())?;
+
+    Ok(())
+}
+
+pub fn complete_tasks(file_path: &PathBuf) -> Result<()> {
+    let mut tasks = get_tasks(file_path)?;
+
+    let id2row = get_map_pendding_tasks(&tasks);
+    prompt(Action::Done)?;
+
+    let selected_ids = get_input()?;
+    for id in selected_ids {
+        match id2row.get(&id) {
+            Some(row) => {
+                tasks[*row].state = State::Completed;
+                tasks[*row].completed_at = Some(date::today());
+            }
+            None => println!("无效的任务编号: {}", id),
+        }
+    }
+
+    write_tasks(file_path, tasks)?;
+    Ok(())
+}
+
+pub fn remove_tasks(file_path: &PathBuf) -> Result<()> {
+    let mut tasks = get_tasks(file_path)?;
+
+    let id2row = get_map_pendding_tasks(&tasks);
+    prompt(Action::Remove)?;
+
+    let selected_ids = get_input()?;
+    for id in selected_ids {
+        match id2row.get(&id) {
+            Some(row) => tasks[*row].state = State::Removed,
+            None => println!("无效的任务编号: {}", id),
+        }
+    }
+
+    write_tasks(file_path, tasks)?;
+    Ok(())
+}
+
+pub fn delete_tasks(file_path: &PathBuf) -> Result<()> {
+    let mut tasks = get_tasks(file_path)?;
+
+    for (i, task) in tasks.iter().enumerate() {
+        println!("{:3} {}", i + 1, task);
+    }
+    prompt(Action::Delete)?;
+
+    let selected_ids = get_input()?;
+    for id in selected_ids {
+        if id == 0 || id > tasks.len() {
+            println!("无效的任务编号: {}", id);
         } else {
-            text.push_str(line);
+            tasks.remove(id - 1);
         }
-        text.push('\n');
     }
-    let mut file = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .open(file_path)?;
-    file.write_all(text.as_bytes())?;
 
+    write_tasks(file_path, tasks)?;
     Ok(())
-}
-
-pub fn remove_task(file_path: &PathBuf, id: usize) -> Result<()> {
-    let mut file = OpenOptions::new().read(true).open(file_path)?;
-    let mut text = String::new();
-    file.read_to_string(&mut text)?;
-
-    let tasks: Vec<_> = text.lines().collect();
-    if id == 0 || id > tasks.len() {
-        return Err(Error::new(ErrorKind::InvalidInput, "无效的任务 ID"));
-    }
-
-    let mut text = String::new();
-    for (i, line) in tasks.iter().enumerate() {
-        if i + 1 == id {
-            continue;
-        }
-        text.push_str(line);
-        text.push('\n');
-    }
-    let mut file = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .open(file_path)?;
-    file.write_all(text.as_bytes())?;
-
-    Ok(())
-}
-
-pub fn delete_task(file_path: &PathBuf, id: usize) -> Result<()> {
-    todo!()
 }

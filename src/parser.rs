@@ -1,12 +1,12 @@
 use std::fs;
 use std::io::{Error, ErrorKind, Result};
 use std::path::PathBuf;
+use regex::Regex;
 
 use crate::date;
 use crate::priority::Priority;
 use crate::state::State;
 use crate::tasks::Task;
-use regex::Regex;
 
 pub fn parse_line(line: &str, regexes: &[&Regex]) -> Result<Task> {
     let caps = regexes[0]
@@ -22,13 +22,13 @@ pub fn parse_line(line: &str, regexes: &[&Regex]) -> Result<Task> {
     let content = caps[2].to_string();
     let created_at = date::get_date(&caps[3]);
 
-    let due_to = if matches!(state, State::Completed) && caps.get(5).is_none() {
+    let due_to = if state == State::Completed && caps.get(5).is_none() {
         None    // 当任务已完成时，第四个捕获组必是完成日期
     } else {
         caps.get(4).map(|s| date::get_date(s.as_str()))
     };
 
-    let completed_at = if matches!(state, State::Completed) {
+    let completed_at = if state == State::Completed {
         caps.get(if caps.get(5).is_some() { 5 } else { 4 })
             .map(|s| date::get_date(s.as_str()))
     } else {

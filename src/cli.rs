@@ -42,36 +42,27 @@ pub enum Action {
         #[arg(short, long)]
         due_to: Option<String>,
     },
-    /// 标记任务为已完成
-    Done {
-        /// 待完成的任务 ID
-        id: usize,
-    },
-    /// 标记任务为已移除
-    Remove {
-        /// 待移除的任务 ID
-        id: usize,
-    },
-    /// 删除一个任务
-    Delete {
-        /// 待删除的任务 ID
-        id: usize,
-    },
-    /// 列出代办任务
+    /// 列出任务
     List {
         /// 选择显示模式
         #[arg(short, long, default_value = "p")]
         mode: DisplayMode,
     },
+    /// 标记任务为已完成
+    Done,
+    /// 标记任务为已移除
+    Remove,
+    /// 删除任务
+    Delete,
 }
 
 #[derive(Parser)]
 #[command(name = "todotxt", version = "0.1.0", author = "Yangmoooo")]
-/// 一个基于文本文件的命令行 to-do 清单，受到 todo.txt 的启发
+/// 一个基于纯文本的命令行 to-do 清单，受到 todo.txt 的启发
 pub struct Args {
     #[command(subcommand)]
     pub action: Action,
     /// 指定任务清单文件
     #[arg(short, long, default_value = "todo.txt")]
-    pub file_path: Option<PathBuf>,
+    pub file: Option<PathBuf>,
 }

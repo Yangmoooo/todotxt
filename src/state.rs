@@ -2,7 +2,7 @@ use std::fmt;
 use std::io::Error;
 use std::str::FromStr;
 
-// #[derive(PartialEq)]
+#[derive(PartialEq)]
 pub enum State {
     Pendding,
     Completed,
