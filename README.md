@@ -43,4 +43,17 @@ tdt list --mode pcr
 
 `--mode` 和 `-m` 参数指定显示内容，可选值为 `p`、`c`、`r`，分别表示列出进行中的 `Pendding`、已完成的 `Completed`、已移除的 `Removed`，未指定时默认为 `p`
 
+![list](./screenshots/tdt-list.png)
+
 `done`、`remove` 和 `delete` 命令执行后会交互式选择任务，类似于 `yay`
+
+![done](./screenshots/tdt-done.png)
+
+## Next
+
+- [ ] 将任务的 `#projects` 和 `@contexts` 字段改为标签 `#tags`
+- [ ] 给除 `add` 外的命令添加 `Option<String>` 参数，用于搜索任务的内容
+- [ ] 能按标签、优先级、截止日期筛选任务
+- [ ] 能按优先级、截止日期排序任务
+- [ ] 展示任务时倒序排列
+- [ ] 支持范围操作，如 `1-3` 表示 1、2、3 三个任务
