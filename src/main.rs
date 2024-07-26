@@ -7,6 +7,7 @@ mod tasks;
 
 use clap::Parser;
 use std::path::PathBuf;
+use std::io::{Error, ErrorKind};
 
 use crate::cli::{Action, Args};
 use crate::tasks::Task;
@@ -18,12 +19,12 @@ fn get_default_file() -> Option<PathBuf> {
     })
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<(), Error> {
     let Args { action, file } = Args::parse();
 
     let file_path = file
         .or_else(get_default_file)
-        .ok_or(anyhow::anyhow!("未能找到默认的任务清单文件"))?;
+        .ok_or(Error::new(ErrorKind::InvalidInput, "未指定任务清单文件"))?;
 
     match action {
         Action::Add {
