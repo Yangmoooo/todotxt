@@ -1,7 +1,7 @@
-use std::fs;
-use std::io::{Error, ErrorKind, Result};
-use std::path::PathBuf;
 use regex::Regex;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Error, ErrorKind, Result};
+use std::path::PathBuf;
 
 use crate::date;
 use crate::priority::Priority;
@@ -23,7 +23,7 @@ pub fn parse_line(line: &str, regexes: &[&Regex]) -> Result<Task> {
     let created_at = date::get_date(&caps[3]);
 
     let due_to = if state == State::Completed && caps.get(5).is_none() {
-        None    // 当任务已完成时，第四个捕获组必是完成日期
+        None // 当任务已完成时，第四个捕获组必是完成日期
     } else {
         caps.get(4).map(|s| date::get_date(s.as_str()))
     };
@@ -75,11 +75,11 @@ pub fn parse_file(file_path: &PathBuf) -> Result<Vec<Task>> {
 
     let regexes = vec![&re_line, &re_project, &re_context];
 
-    let text = fs::read_to_string(file_path)?;
-    let tasks = text
+    let reader = BufReader::new(File::open(file_path)?);
+    let tasks = reader
         .lines()
-        .filter(|line| !line.is_empty())
-        .map(|line| parse_line(line, &regexes))
+        .filter_map(|line| line.ok().filter(|line| !line.is_empty()))
+        .map(|line| parse_line(&line, &regexes))
         .collect::<Result<Vec<_>>>()?;
 
     Ok(tasks)
