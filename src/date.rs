@@ -1,7 +1,7 @@
 pub use chrono::NaiveDate as Date;
 
 pub fn get_date(s: &str) -> Date {
-    Date::parse_from_str(s, "%Y-%m-%d").unwrap()
+    Date::parse_from_str(s, "%Y-%m-%d").expect("无效的日期格式")
 }
 
 pub fn fmt_date(date: &Date) -> String {
