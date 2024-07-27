@@ -6,8 +6,8 @@ mod state;
 mod tasks;
 
 use clap::Parser;
-use std::path::PathBuf;
 use std::io::{Error, ErrorKind};
+use std::path::PathBuf;
 
 use crate::cli::{Action, Args};
 use crate::tasks::Task;
@@ -39,10 +39,10 @@ fn main() -> Result<(), Error> {
             );
             tasks::add_task(&file_path, task)
         }
-        Action::List { mode } => tasks::list_tasks(&file_path, mode),
-        Action::Done => tasks::complete_tasks(&file_path),
-        Action::Remove => tasks::remove_tasks(&file_path),
-        Action::Delete => tasks::delete_tasks(&file_path),
+        Action::List { mode, keyword, tag } => tasks::list_tasks(&file_path, mode, keyword.as_deref(), tag.as_deref()),
+        Action::Done { keyword, tag } => tasks::complete_tasks(&file_path, keyword.as_deref(), tag.as_deref()),
+        Action::Remove { keyword, tag } => tasks::remove_tasks(&file_path, keyword.as_deref(), tag.as_deref()),
+        Action::Delete { keyword, tag } => tasks::delete_tasks(&file_path, keyword.as_deref(), tag.as_deref()),
     }?;
 
     Ok(())

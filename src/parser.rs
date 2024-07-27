@@ -8,7 +8,7 @@ use crate::priority::Priority;
 use crate::state::State;
 use crate::tasks::Task;
 
-pub fn parse_line(line: &str, regexes: &[&Regex]) -> Result<Task> {
+fn parse_line(line: &str, regexes: &[&Regex]) -> Result<Task> {
     let caps = regexes[0]
         .captures(line)
         .ok_or_else(|| Error::new(ErrorKind::InvalidData, "无效的任务格式"))?;
@@ -35,9 +35,7 @@ pub fn parse_line(line: &str, regexes: &[&Regex]) -> Result<Task> {
         None
     };
 
-    let tags = parse_content(line, &regexes[1..]);
-    let projects = tags[0].clone();
-    let contexts = tags[1].clone();
+    let tags = parse_tag(line, regexes[1]);
 
     Ok(Task {
         state,
@@ -46,13 +44,8 @@ pub fn parse_line(line: &str, regexes: &[&Regex]) -> Result<Task> {
         created_at,
         due_to,
         completed_at,
-        projects,
-        contexts,
+        tags,
     })
-}
-
-fn parse_content(content: &str, regexes: &[&Regex]) -> Vec<Vec<String>> {
-    regexes.iter().map(|re| parse_tag(content, re)).collect()
 }
 
 fn parse_tag(content: &str, re: &Regex) -> Vec<String> {
@@ -70,11 +63,9 @@ pub fn parse_file(file_path: &PathBuf) -> Result<Vec<Task>> {
         r"(?: \((\d{4}-\d{2}-\d{2})\))?",
     ))
     .unwrap();
-    let re_project = Regex::new(r"(?:\s|^)#(\w+)(?:\s|$)").unwrap();
-    let re_context = Regex::new(r"(?:\s|^)@(\w+)(?:\s|$)").unwrap();
+    let re_tag = Regex::new(r"(?:\s|^)#(\w+)(?:\s|$)").unwrap();
 
-    let regexes = vec![&re_line, &re_project, &re_context];
-
+    let regexes = [&re_line, &re_tag];
     let reader = BufReader::new(File::open(file_path)?);
     let tasks = reader
         .lines()

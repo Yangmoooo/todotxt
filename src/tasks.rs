@@ -5,7 +5,7 @@ use std::fs::OpenOptions;
 use std::io::{self, BufWriter, Error, ErrorKind, Result, Write};
 use std::path::PathBuf;
 
-use crate::cli::{Action, DisplayMode};
+use crate::cli::DisplayMode;
 use crate::date::{self, Date, DateChecker};
 use crate::parser;
 use crate::priority::Priority;
@@ -23,8 +23,7 @@ pub struct Task {
     pub created_at: Date,
     pub due_to: Option<Date>,
     pub completed_at: Option<Date>,
-    pub projects: Vec<String>,
-    pub contexts: Vec<String>,
+    pub tags: Vec<String>,
 }
 
 impl Task {
@@ -36,8 +35,7 @@ impl Task {
             created_at: date::today(),
             due_to,
             completed_at: None,
-            projects: Vec::new(),
-            contexts: Vec::new(),
+            tags: Vec::new(),
         }
     }
 }
@@ -68,11 +66,25 @@ impl Task {
 }
 
 impl Task {
-    fn can_display(&self, mode: &DisplayMode) -> bool {
+    fn match_mode(&self, mode: &DisplayMode) -> bool {
         match self.state {
             State::Pendding => mode.contains(DisplayMode::PENDDING),
             State::Completed => mode.contains(DisplayMode::COMPLETED),
             State::Removed => mode.contains(DisplayMode::REMOVED),
+        }
+    }
+
+    fn match_keyword(&self, keyword: Option<&str>) -> bool {
+        match keyword {
+            Some(k) => self.content.contains(k),
+            None => true,
+        }
+    }
+
+    fn match_tag(&self, tag: Option<&str>) -> bool {
+        match tag {
+            Some(t) => self.tags.contains(&t.to_string()),
+            None => true,
         }
     }
 
@@ -139,15 +151,14 @@ fn get_tasks(file_path: &PathBuf) -> Result<Vec<Task>> {
     })
 }
 
-//TODO: 按 标签 列出任务
 //TODO: 按 优先级 列出任务并排序
 //TODO: 按 截止日期 列出任务并排序
-pub fn list_tasks(file_path: &PathBuf, mode: DisplayMode) -> Result<()> {
+pub fn list_tasks(file_path: &PathBuf, mode: DisplayMode, keyword: Option<&str>, tag: Option<&str>) -> Result<()> {
     let tasks = get_tasks(file_path)?;
     let mut i = 0;
     let mut writer = BufWriter::new(io::stdout().lock());
     for task in tasks {
-        if task.can_display(&mode) {
+        if task.match_mode(&mode) && task.match_keyword(keyword) && task.match_tag(tag) {
             i += 1;
             writeln!(writer, "{:3} {}", i, task)?;
         }
@@ -166,12 +177,12 @@ pub fn add_task(file_path: &PathBuf, task: Task) -> Result<()> {
 }
 
 //TODO: 优化显示逻辑，倒序显示
-fn get_map_pendding_tasks(tasks: &[Task]) -> Result<HashMap<usize, usize>> {
+fn get_map_pendding_tasks(tasks: &[Task], keyword: Option<&str>, tag: Option<&str>) -> Result<HashMap<usize, usize>> {
     let mut id: usize = 0;
     let mut map = HashMap::new();
     let mut writer = BufWriter::new(io::stdout().lock());
     for (row, task) in tasks.iter().enumerate() {
-        if task.state == State::Pendding {
+        if task.state == State::Pendding && task.match_keyword(keyword) && task.match_tag(tag) {
             id += 1;
             map.insert(id, row);
             writeln!(writer, "{:3} {}", id, task)?;
@@ -181,12 +192,12 @@ fn get_map_pendding_tasks(tasks: &[Task]) -> Result<HashMap<usize, usize>> {
     Ok(map)
 }
 
-fn prompt(action: Action) -> Result<()> {
+fn prompt(action: u8) -> Result<()> {
     print!("{} ", "==>".green());
     match action {
-        Action::Done => print!("要完成的任务 "),
-        Action::Remove => print!("要移除的任务 "),
-        Action::Delete => print!("要删除的任务 "),
+        1 => print!("要完成的任务"),
+        2 => print!("要移除的任务 "),
+        3 => print!("要删除的任务 "),
         _ => return Err(Error::new(ErrorKind::InvalidInput, "无效的操作")),
     }
     println!("(示例: 1 2 3, 或 1-3)");
@@ -226,11 +237,11 @@ fn write_tasks(file_path: &PathBuf, tasks: Vec<Task>) -> Result<()> {
     Ok(())
 }
 
-pub fn complete_tasks(file_path: &PathBuf) -> Result<()> {
+pub fn complete_tasks(file_path: &PathBuf, keyword: Option<&str>, tag: Option<&str>) -> Result<()> {
     let mut tasks = get_tasks(file_path)?;
 
-    let id2row = get_map_pendding_tasks(&tasks)?;
-    prompt(Action::Done)?;
+    let id2row = get_map_pendding_tasks(&tasks, keyword, tag)?;
+    prompt(1)?;
 
     let selected_ids = get_input()?;
     for id in selected_ids {
@@ -247,11 +258,11 @@ pub fn complete_tasks(file_path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub fn remove_tasks(file_path: &PathBuf) -> Result<()> {
+pub fn remove_tasks(file_path: &PathBuf, keyword: Option<&str>, tag: Option<&str>) -> Result<()> {
     let mut tasks = get_tasks(file_path)?;
 
-    let id2row = get_map_pendding_tasks(&tasks)?;
-    prompt(Action::Remove)?;
+    let id2row = get_map_pendding_tasks(&tasks, keyword, tag)?;
+    prompt(2)?;
 
     let selected_ids = get_input()?;
     for id in selected_ids {
@@ -265,21 +276,17 @@ pub fn remove_tasks(file_path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub fn delete_tasks(file_path: &PathBuf) -> Result<()> {
+pub fn delete_tasks(file_path: &PathBuf, keyword: Option<&str>, tag: Option<&str>) -> Result<()> {
     let mut tasks = get_tasks(file_path)?;
-    let mut writer = BufWriter::new(io::stdout().lock());
-    for (i, task) in tasks.iter().enumerate() {
-        writeln!(writer, "{:3} {}", i + 1, task)?;
-    }
-    writer.flush()?;
-    prompt(Action::Delete)?;
+
+    let id2row = get_map_pendding_tasks(&tasks, keyword, tag)?;
+    prompt(3)?;
 
     let selected_ids = get_input()?;
     for id in selected_ids {
-        if id == 0 || id > tasks.len() {
-            eprintln!("无效的任务编号: {}", id);
-        } else {
-            tasks.remove(id - 1);
+        match id2row.get(&id) {
+            Some(row) => _ = tasks.remove(*row),
+            None => eprintln!("无效的任务编号: {}", id),
         }
     }
 

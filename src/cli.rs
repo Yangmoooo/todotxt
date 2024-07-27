@@ -47,13 +47,36 @@ pub enum Action {
         /// 选择显示模式
         #[arg(short, long, default_value = "p")]
         mode: DisplayMode,
+        /// 关键词
+        keyword: Option<String>,
+        /// 标签
+        #[arg(short, long)]
+        tag: Option<String>,
     },
     /// 标记任务为已完成
-    Done,
+    Done {
+        /// 关键词
+        keyword: Option<String>,
+        /// 标签
+        #[arg(short, long)]
+        tag: Option<String>,
+    },
     /// 标记任务为已移除
-    Remove,
+    Remove {
+        /// 关键词
+        keyword: Option<String>,
+        /// 标签
+        #[arg(short, long)]
+        tag: Option<String>,
+    },
     /// 删除任务
-    Delete,
+    Delete {
+        /// 关键词
+        keyword: Option<String>,
+        /// 标签
+        #[arg(short, long)]
+        tag: Option<String>,
+    },
 }
 
 #[derive(Parser)]
