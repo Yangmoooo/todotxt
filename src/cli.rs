@@ -6,7 +6,7 @@ use std::str::FromStr;
 bitflags::bitflags! {
     #[derive(Clone)]
     pub struct DisplayMode: u8 {
-        const PENDDING = 0b0001;
+        const PENDING = 0b0001;
         const COMPLETED = 0b0010;
         const REMOVED = 0b0100;
     }
@@ -19,7 +19,7 @@ impl FromStr for DisplayMode {
         let mut mode = DisplayMode::empty();
         for c in s.chars() {
             match c {
-                'p' => mode |= DisplayMode::PENDDING,
+                'p' => mode |= DisplayMode::PENDING,
                 'c' => mode |= DisplayMode::COMPLETED,
                 'r' => mode |= DisplayMode::REMOVED,
                 _ => return Err(format!("无效的模式字符: {}", c)),

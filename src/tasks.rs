@@ -29,7 +29,7 @@ pub struct Task {
 impl Task {
     pub fn new(priority: Priority, content: String, due_to: Option<Date>) -> Self {
         Self {
-            state: State::Pendding,
+            state: State::Pending,
             priority,
             content,
             created_at: date::today(),
@@ -52,7 +52,7 @@ impl Task {
                 },
             )),
             State::Removed => Some(due_to.dimmed()),
-            State::Pendding => Some(due_to.color(if self.due_to.unwrap().is_over() {
+            State::Pending => Some(due_to.color(if self.due_to.unwrap().is_over() {
                 Color::Red
             } else {
                 Color::Cyan
@@ -68,7 +68,7 @@ impl Task {
 impl Task {
     fn match_mode(&self, mode: &DisplayMode) -> bool {
         match self.state {
-            State::Pendding => mode.contains(DisplayMode::PENDDING),
+            State::Pending => mode.contains(DisplayMode::PENDING),
             State::Completed => mode.contains(DisplayMode::COMPLETED),
             State::Removed => mode.contains(DisplayMode::REMOVED),
         }
@@ -182,7 +182,7 @@ fn get_map_pendding_tasks(tasks: &[Task], keyword: Option<&str>, tag: Option<&st
     let mut map = HashMap::new();
     let mut writer = BufWriter::new(io::stdout().lock());
     for (row, task) in tasks.iter().enumerate() {
-        if task.state == State::Pendding && task.match_keyword(keyword) && task.match_tag(tag) {
+        if task.state == State::Pending && task.match_keyword(keyword) && task.match_tag(tag) {
             id += 1;
             map.insert(id, row);
             writeln!(writer, "{:3} {}", id, task)?;

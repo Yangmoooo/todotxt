@@ -4,21 +4,21 @@ use std::str::FromStr;
 
 #[derive(PartialEq)]
 pub enum State {
-    Pendding,
+    Pending,
     Completed,
     Removed,
 }
 
 impl Default for State {
     fn default() -> Self {
-        Self::Pendding
+        Self::Pending
     }
 }
 
 impl State {
     pub fn as_str(&self) -> &str {
         match self {
-            Self::Pendding => "",
+            Self::Pending => "",
             Self::Completed => "✓ ",
             Self::Removed => "✗ ",
         }
@@ -28,7 +28,7 @@ impl State {
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Pendding => write!(f, ""),
+            Self::Pending => write!(f, ""),
             Self::Completed => write!(f, "✓ "),
             Self::Removed => write!(f, "✗ "),
         }
@@ -42,7 +42,7 @@ impl FromStr for State {
         match s {
             "✓" => Ok(Self::Completed),
             "✗" => Ok(Self::Removed),
-            _ => Ok(Self::Pendding),
+            _ => Ok(Self::Pending),
         }
     }
 }

@@ -16,7 +16,7 @@ fn parse_line(line: &str, regexes: &[&Regex]) -> Result<Task> {
     let state: State = match line.chars().next() {
         Some('✓') => State::Completed,
         Some('✗') => State::Removed,
-        _ => State::Pendding,
+        _ => State::Pending,
     };
     let priority: Priority = caps[1].parse()?;
     let content = caps[2].to_string();
