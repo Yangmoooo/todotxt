@@ -31,7 +31,7 @@ impl FromStr for DisplayMode {
 
 #[derive(Subcommand)]
 pub enum Action {
-    /// 添加一个新任务
+    /// 添加任务
     Add {
         /// 任务内容
         content: String,
@@ -53,7 +53,7 @@ pub enum Action {
         #[arg(short, long)]
         tag: Option<String>,
     },
-    /// 标记任务为已完成
+    /// 完成任务
     Done {
         /// 关键词
         keyword: Option<String>,
@@ -61,7 +61,15 @@ pub enum Action {
         #[arg(short, long)]
         tag: Option<String>,
     },
-    /// 标记任务为已移除
+    /// 修改任务
+    Modify {
+        /// 关键词
+        keyword: Option<String>,
+        /// 标签
+        #[arg(short, long)]
+        tag: Option<String>,
+    },
+    /// 移除任务
     Remove {
         /// 关键词
         keyword: Option<String>,

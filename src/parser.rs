@@ -35,7 +35,7 @@ fn parse_line(line: &str, regexes: &[&Regex]) -> Result<Task> {
         None
     };
 
-    let tags = parse_tag(line, regexes[1]);
+    let tags = parse_tags(line, regexes[1]);
 
     Ok(Task {
         state,
@@ -48,7 +48,7 @@ fn parse_line(line: &str, regexes: &[&Regex]) -> Result<Task> {
     })
 }
 
-fn parse_tag(content: &str, re: &Regex) -> Vec<String> {
+pub fn parse_tags(content: &str, re: &Regex) -> Vec<String> {
     re.captures_iter(content)
         .filter_map(|caps| caps.get(1).map(|tag| tag.as_str().to_string()))
         .collect()

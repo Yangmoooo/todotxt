@@ -40,6 +40,9 @@ pub fn run(action: Action, file_path: PathBuf) -> Result<(), Error> {
         Action::Done { keyword, tag } => {
             tasks::complete_tasks(&file_path, keyword.as_deref(), tag.as_deref())
         }
+        Action::Modify { keyword, tag } => {
+            tasks::modify_tasks(&file_path, keyword.as_deref(), tag.as_deref())
+        }
         Action::Remove { keyword, tag } => {
             tasks::remove_tasks(&file_path, keyword.as_deref(), tag.as_deref())
         }

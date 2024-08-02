@@ -26,6 +26,7 @@
 - `add` 添加一个新任务
 - `list` 列出任务
 - `done` 标记任务为已完成
+- `modify` 修改任务
 - `remove` 标记任务为已移除
 - `delete` 删除任务
 
@@ -45,7 +46,7 @@ tdt list --mode pcr
 
 ![list](./screenshots/tdt-list.png)
 
-`done`、`remove` 和 `delete` 命令执行后会交互式选择任务，类似于 `yay`
+`done`、`modify`、`remove` 和 `delete` 命令执行后会交互式选择任务，类似于 `yay`
 
 ![done](./screenshots/tdt-done.png)
 
