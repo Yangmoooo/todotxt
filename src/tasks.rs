@@ -6,16 +6,11 @@ use std::fs::OpenOptions;
 use std::io::{self, BufWriter, Error, ErrorKind, Result, Write};
 use std::path::PathBuf;
 
-use crate::cli::DisplayMode;
+use crate::cli::{DisplayMode, TaskConf};
 use crate::date::{self, Date, DateChecker};
 use crate::parser;
 use crate::priority::Priority;
 use crate::state::State;
-
-// #[cfg(windows)]
-// const NEWLINE: &str = "\r\n";
-// #[cfg(not(windows))]
-// const NEWLINE: &str = "\n";
 
 pub struct Task {
     pub state: State,
@@ -43,7 +38,7 @@ impl Task {
 
 impl Task {
     fn fmt_due_to(&self) -> Option<ColoredString> {
-        let due_to = self.due_to.map(|date| date::fmt_date(&date))?;
+        let due_to = self.due_to.map(|date| date.fmt())?;
         match self.state {
             State::Completed => Some(due_to.color(
                 if self.completed_at.unwrap().is_later(&self.due_to.unwrap()) {
@@ -62,7 +57,7 @@ impl Task {
     }
 
     fn fmt_completed_at(&self) -> Option<ColoredString> {
-        self.completed_at.map(|date| date::fmt_date(&date).green())
+        self.completed_at.map(|date| date.fmt().green())
     }
 }
 
@@ -75,16 +70,38 @@ impl Task {
         }
     }
 
-    fn match_keyword(&self, keyword: Option<&str>) -> bool {
+    fn match_conf(&self, conf: &TaskConf) -> bool {
+        self.contain_keyword(conf.keyword.as_deref())
+            && self.contain_tag(conf.tag.as_deref())
+            && self.higher_priority(conf.priority)
+            && self.before_due_to(conf.due_to)
+    }
+
+    fn contain_keyword(&self, keyword: Option<&str>) -> bool {
         match keyword {
             Some(k) => self.content.contains(k),
             None => true,
         }
     }
 
-    fn match_tag(&self, tag: Option<&str>) -> bool {
+    fn contain_tag(&self, tag: Option<&str>) -> bool {
         match tag {
             Some(t) => self.tags.contains(&t.to_string()),
+            None => true,
+        }
+    }
+
+    fn higher_priority(&self, priority: Option<Priority>) -> bool {
+        match priority {
+            Some(p) => self.priority >= p,
+            None => true,
+        }
+    }
+
+    fn before_due_to(&self, due_to: Option<Date>) -> bool {
+        match due_to {
+            Some(d) if self.due_to.is_some() => self.due_to.unwrap().is_earlier(&d),
+            Some(_) => false,
             None => true,
         }
     }
@@ -95,13 +112,13 @@ impl Task {
             self.state,
             self.priority,
             self.content,
-            self.created_at.format("%Y-%m-%d")
+            self.created_at.fmt()
         );
         if let Some(due_to) = self.due_to {
-            s.push_str(&format!(" (due:{})", due_to.format("%Y-%m-%d")));
+            s.push_str(&format!(" (due:{})", due_to.fmt()));
         }
         if let Some(completed_at) = self.completed_at {
-            s.push_str(&format!(" ({})", completed_at.format("%Y-%m-%d")));
+            s.push_str(&format!(" ({})", completed_at.fmt()));
         }
         s
     }
@@ -112,7 +129,7 @@ impl fmt::Display for Task {
         let state = self.state.as_str();
         let priority = self.priority.as_str();
         let content = self.content.as_str();
-        let created_at = date::fmt_date(&self.created_at);
+        let created_at = self.created_at.fmt();
         if self.state == State::Removed {
             write!(
                 f,
@@ -153,19 +170,13 @@ pub fn add_task(file_path: &PathBuf, task: Task) -> Result<()> {
     Ok(())
 }
 
-//TODO: 按 优先级 列出任务并排序
-//TODO: 按 截止日期 列出任务并排序
-pub fn list_tasks(
-    file_path: &PathBuf,
-    mode: DisplayMode,
-    keyword: Option<&str>,
-    tag: Option<&str>,
-) -> Result<()> {
+//TODO: 输出任务时支持按 优先级/截止日期 排序
+pub fn list_tasks(file_path: &PathBuf, mode: DisplayMode, conf: &TaskConf) -> Result<()> {
     let tasks = get_tasks(file_path)?;
     let mut i = 0;
     let mut writer = BufWriter::new(io::stdout().lock());
     for task in tasks {
-        if task.match_mode(&mode) && task.match_keyword(keyword) && task.match_tag(tag) {
+        if task.match_mode(&mode) && task.match_conf(conf) {
             i += 1;
             writeln!(writer, "{:3} {}", i, task)?;
         }
@@ -176,10 +187,10 @@ pub fn list_tasks(
 
 /* 交互式命令 */
 
-pub fn complete_tasks(file_path: &PathBuf, keyword: Option<&str>, tag: Option<&str>) -> Result<()> {
+pub fn complete_tasks(file_path: &PathBuf, conf: &TaskConf) -> Result<()> {
     let mut tasks = get_tasks(file_path)?;
 
-    let id2row = get_map_pendding_tasks(&tasks, keyword, tag)?;
+    let id2row = get_map_pendding_tasks(&tasks, conf)?;
     prompt(1)?;
 
     let selected_ids = get_input()?;
@@ -197,10 +208,10 @@ pub fn complete_tasks(file_path: &PathBuf, keyword: Option<&str>, tag: Option<&s
     Ok(())
 }
 
-pub fn modify_tasks(file_path: &PathBuf, keyword: Option<&str>, tag: Option<&str>) -> Result<()> {
+pub fn modify_tasks(file_path: &PathBuf, conf: &TaskConf) -> Result<()> {
     let mut tasks = get_tasks(file_path)?;
 
-    let id2row = get_map_pendding_tasks(&tasks, keyword, tag)?;
+    let id2row = get_map_pendding_tasks(&tasks, conf)?;
     prompt(2)?;
 
     let selected_ids = get_input()?;
@@ -224,10 +235,10 @@ pub fn modify_tasks(file_path: &PathBuf, keyword: Option<&str>, tag: Option<&str
     Ok(())
 }
 
-pub fn remove_tasks(file_path: &PathBuf, keyword: Option<&str>, tag: Option<&str>) -> Result<()> {
+pub fn remove_tasks(file_path: &PathBuf, conf: &TaskConf) -> Result<()> {
     let mut tasks = get_tasks(file_path)?;
 
-    let id2row = get_map_pendding_tasks(&tasks, keyword, tag)?;
+    let id2row = get_map_pendding_tasks(&tasks, conf)?;
     prompt(2)?;
 
     let selected_ids = get_input()?;
@@ -242,10 +253,10 @@ pub fn remove_tasks(file_path: &PathBuf, keyword: Option<&str>, tag: Option<&str
     Ok(())
 }
 
-pub fn delete_tasks(file_path: &PathBuf, keyword: Option<&str>, tag: Option<&str>) -> Result<()> {
+pub fn delete_tasks(file_path: &PathBuf, conf: &TaskConf) -> Result<()> {
     let mut tasks = get_tasks(file_path)?;
 
-    let id2row = get_map_pendding_tasks(&tasks, keyword, tag)?;
+    let id2row = get_map_pendding_tasks(&tasks, conf)?;
     prompt(3)?;
 
     let selected_ids = get_input()?;
@@ -273,16 +284,12 @@ fn get_tasks(file_path: &PathBuf) -> Result<Vec<Task>> {
 }
 
 //TODO: 优化显示逻辑，倒序显示
-fn get_map_pendding_tasks(
-    tasks: &[Task],
-    keyword: Option<&str>,
-    tag: Option<&str>,
-) -> Result<HashMap<usize, usize>> {
+fn get_map_pendding_tasks(tasks: &[Task], conf: &TaskConf) -> Result<HashMap<usize, usize>> {
     let mut id: usize = 0;
     let mut map = HashMap::new();
     let mut writer = BufWriter::new(io::stdout().lock());
     for (row, task) in tasks.iter().enumerate() {
-        if task.state == State::Pending && task.match_keyword(keyword) && task.match_tag(tag) {
+        if task.state == State::Pending && task.match_conf(conf) {
             id += 1;
             map.insert(id, row);
             writeln!(writer, "{:3} {}", id, task)?;
@@ -361,7 +368,8 @@ fn edit_task(task: &mut Task) -> Result<()> {
             if input.trim().is_empty() {
                 task.due_to = None;
             } else {
-                task.due_to = Some(date::get_date(input.trim()));
+                // task.due_to = Some(date::get_date(input.trim()));
+                task.due_to = Some(input.trim().parse().unwrap());
             }
         }
         _ => eprintln!("{} 无效的字段: {}", "==>".red(), field),

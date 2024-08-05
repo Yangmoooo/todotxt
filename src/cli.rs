@@ -2,6 +2,8 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use crate::date::Date;
+use crate::priority::Priority;
 
 bitflags::bitflags! {
     #[derive(Clone)]
@@ -29,6 +31,21 @@ impl FromStr for DisplayMode {
     }
 }
 
+#[derive(Parser)]
+pub struct TaskConf {
+    /// 关键词
+    pub keyword: Option<String>,
+    /// 标签
+    #[arg(short, long)]
+    pub tag: Option<String>,
+    /// 优先级
+    #[arg(short, long)]
+    pub priority: Option<Priority>,
+    /// 截止日期
+    #[arg(short, long)]
+    pub due_to: Option<Date>,
+}
+
 #[derive(Subcommand)]
 pub enum Action {
     /// 添加任务
@@ -37,53 +54,38 @@ pub enum Action {
         content: String,
         /// 优先级
         #[arg(short, long)]
-        priority: Option<char>,
+        priority: Option<Priority>,
         /// 截止日期
         #[arg(short, long)]
-        due_to: Option<String>,
+        due_to: Option<Date>,
     },
     /// 列出任务
     List {
-        /// 选择显示模式
+        /// 显示模式
         #[arg(short, long, default_value = "p")]
         mode: DisplayMode,
-        /// 关键词
-        keyword: Option<String>,
-        /// 标签
-        #[arg(short, long)]
-        tag: Option<String>,
+        #[command(flatten)]
+        conf: TaskConf,
     },
     /// 完成任务
     Done {
-        /// 关键词
-        keyword: Option<String>,
-        /// 标签
-        #[arg(short, long)]
-        tag: Option<String>,
+        #[command(flatten)]
+        conf: TaskConf,
     },
     /// 修改任务
     Modify {
-        /// 关键词
-        keyword: Option<String>,
-        /// 标签
-        #[arg(short, long)]
-        tag: Option<String>,
+        #[command(flatten)]
+        conf: TaskConf,
     },
     /// 移除任务
     Remove {
-        /// 关键词
-        keyword: Option<String>,
-        /// 标签
-        #[arg(short, long)]
-        tag: Option<String>,
+        #[command(flatten)]
+        conf: TaskConf,
     },
     /// 删除任务
     Delete {
-        /// 关键词
-        keyword: Option<String>,
-        /// 标签
-        #[arg(short, long)]
-        tag: Option<String>,
+        #[command(flatten)]
+        conf: TaskConf,
     },
 }
 

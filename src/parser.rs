@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Error, ErrorKind, Result};
 use std::path::PathBuf;
 
-use crate::date;
+use crate::date::Date;
 use crate::priority::Priority;
 use crate::state::State;
 use crate::tasks::Task;
@@ -20,17 +20,17 @@ fn parse_line(line: &str, regexes: &[&Regex]) -> Result<Task> {
     };
     let priority: Priority = caps[1].parse()?;
     let content = caps[2].to_string();
-    let created_at = date::get_date(&caps[3]);
+    let created_at: Date = caps[3].parse()?;
 
     let due_to = if state == State::Completed && caps.get(5).is_none() {
         None // 当任务已完成时，第四个捕获组必是完成日期
     } else {
-        caps.get(4).map(|s| date::get_date(s.as_str()))
+        caps.get(4).map(|s| s.as_str().parse()).transpose()?
     };
 
-    let completed_at = if state == State::Completed {
+    let completed_at: Option<Date> = if state == State::Completed {
         caps.get(if caps.get(5).is_some() { 5 } else { 4 })
-            .map(|s| date::get_date(s.as_str()))
+            .and_then(|s| s.as_str().parse().ok())
     } else {
         None
     };
