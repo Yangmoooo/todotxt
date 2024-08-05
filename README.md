@@ -21,7 +21,7 @@
 - 截止日期为任务的截止日期（可选）
 - 完成日期为任务的完成日期（仅已完成的任务有）
 
-支持如下 5 种操作：
+支持如下 6 种操作：
 
 - `add` 添加一个新任务
 - `list` 列出任务
@@ -34,27 +34,36 @@
 tdt add "这只是一个测试任务" --priority A --due-to 2024-09-01
 ```
 
-`--priority` 和 `-p` 参数指定优先级，未指定时默认为 `O`
+`--priority` 或 `-p` 参数指定优先级，未指定时默认为 `O`
 
-`--due-to` 和 `-d` 参数指定截止日期，未指定时默认为空
+`--due-to` 或 `-d` 参数指定截止日期，未指定时默认为空
 
 ```shell
-tdt list --mode pcr
+tdt list 打招呼 --mode pcr --tag 学习 --priority B --due-to 2024-09-01
 ```
 
-`--mode` 和 `-m` 参数指定显示内容，可选值为 `p`、`c`、`r`，分别表示列出进行中的 `Pendding`、已完成的 `Completed`、已移除的 `Removed`，未指定时默认为 `p`
+关键词（如 `打招呼` ）用于搜索任务的内容，未指定时默认为空
+
+`--mode` 或 `-m` 参数指定显示内容，可选值为 `p`、`c`、`r`，分别表示列出进行中的 `Pendding`、已完成的 `Completed`、已移除的 `Removed`，未指定时默认为 `p`
+
+`--tag` 或 `-t` 参数指定标签，未指定时默认为空
+
+`--priority` 或 `-p` 参数指定优先级，会筛选出大于等于该优先级的任务，未指定时默认为空
+
+`--due-to` 或 `-d` 参数指定截止日期，会筛选出截止日期在该日期之前（包含当日）的任务，未指定时默认为空
+
 
 ![list](./screenshots/tdt-list.png)
 
-`done`、`modify`、`remove` 和 `delete` 命令执行后会交互式选择任务，类似于 `yay`
+`done`、`modify`、`remove` 和 `delete` 命令参数类似于 `list`，但执行后会交互式选择任务，类似于 `yay`
 
-![done](./screenshots/tdt-done.png)
+![done](./screenshots/tdt-modify.png)
 
 ## Next
 
 - [x] 将任务的 `#projects` 和 `@contexts` 字段改为标签 `#tags`
 - [x] 给除 `add` 外的命令添加 `Option<String>` 参数，用于搜索任务的内容
-- [ ] 能按标签、优先级、截止日期筛选任务
+- [x] 能按标签、优先级、截止日期筛选任务
 - [ ] 能按优先级、截止日期排序任务
 - [ ] 展示任务时倒序排列
 - [ ] 支持范围操作，如 `1-3` 表示 1、2、3 三个任务
