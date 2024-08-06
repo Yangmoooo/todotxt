@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 use std::io::{Error, ErrorKind};
 use std::str::FromStr;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Date(NaiveDate);
 
 impl FromStr for Date {
@@ -15,31 +15,28 @@ impl FromStr for Date {
     }
 }
 
+impl PartialOrd for Date {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.0.cmp(&other.0))
+    }
+}
+
+impl Ord for Date {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
 impl Date {
     pub fn fmt(&self) -> String {
         self.0.format("%Y-%m-%d").to_string()
+    }
+
+    pub fn is_over(&self) -> bool {
+        today().0 > self.0
     }
 }
 
 pub fn today() -> Date {
     Date(chrono::Local::now().date_naive())
-}
-pub trait DateChecker {
-    fn is_over(&self) -> bool;
-    fn is_later(&self, other: &Self) -> bool;
-    fn is_earlier(&self, other: &Self) -> bool;
-}
-
-impl DateChecker for Date {
-    fn is_over(&self) -> bool {
-        today().0 > self.0
-    }
-
-    fn is_later(&self, other: &Self) -> bool {
-        self.0 > other.0
-    }
-
-    fn is_earlier(&self, other: &Self) -> bool {
-        self.0 <= other.0
-    }
 }

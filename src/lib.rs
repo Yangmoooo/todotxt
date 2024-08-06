@@ -31,7 +31,7 @@ pub fn run(action: Action, file_path: PathBuf) -> Result<(), Error> {
             let task = Task::new(priority.unwrap_or_default(), content, due_to);
             tasks::add_task(&file_path, task)
         }
-        Action::List { mode, conf } => tasks::list_tasks(&file_path, mode, &conf),
+        Action::List { mode, conf } => tasks::list_tasks(&file_path, &mode, &conf),
         Action::Done { conf } => tasks::complete_tasks(&file_path, &conf),
         Action::Modify { conf } => tasks::modify_tasks(&file_path, &conf),
         Action::Remove { conf } => tasks::remove_tasks(&file_path, &conf),

@@ -44,6 +44,9 @@ pub struct TaskConf {
     /// 截止日期
     #[arg(short, long)]
     pub due_to: Option<Date>,
+    /// 按 优先级/截止日期 排序
+    #[arg(short, long)]
+    pub sort_by: Option<String>,
 }
 
 #[derive(Subcommand)]
