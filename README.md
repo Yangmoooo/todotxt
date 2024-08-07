@@ -39,7 +39,7 @@ tdt add "这只是一个测试任务" --priority A --due-to 2024-09-01
 `--due-to` 或 `-d` 参数指定截止日期，未指定时默认为空
 
 ```shell
-tdt list 打招呼 --mode pcr --tag 学习 --priority B --due-to 2024-09-01
+tdt list 打招呼 --mode pcr --tag 学习 --priority B --due-to 2024-09-01 --sort-by priority
 ```
 
 关键词（如 `打招呼` ）用于搜索任务的内容，未指定时默认为空
@@ -52,6 +52,7 @@ tdt list 打招呼 --mode pcr --tag 学习 --priority B --due-to 2024-09-01
 
 `--due-to` 或 `-d` 参数指定截止日期，会筛选出截止日期在该日期之前（包含当日）的任务，未指定时默认为空
 
+`--sort-by` 或 `-s` 参数指定排序方式，可选值为 `priority` / `p` 和 `due-to` / `d`，分别表示按优先级和截止日期排序，未指定时默认为空（即按创建日期排序）
 
 ![list](./screenshots/tdt-list.png)
 
@@ -64,6 +65,5 @@ tdt list 打招呼 --mode pcr --tag 学习 --priority B --due-to 2024-09-01
 - [x] 将任务的 `#projects` 和 `@contexts` 字段改为标签 `#tags`
 - [x] 给除 `add` 外的命令添加 `Option<String>` 参数，用于搜索任务的内容
 - [x] 能按标签、优先级、截止日期筛选任务
-- [ ] 能按优先级、截止日期排序任务
-- [ ] 展示任务时倒序排列
-- [ ] 支持范围操作，如 `1-3` 表示 1、2、3 三个任务
+- [x] 能按优先级、截止日期排序任务
+- [x] 展示任务时倒序排列
