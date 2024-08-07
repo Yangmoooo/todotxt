@@ -171,7 +171,10 @@ pub fn add_task(file_path: &PathBuf, task: Task) -> Result<()> {
 }
 
 pub fn list_tasks(file_path: &PathBuf, mode: &DisplayMode, conf: &TaskConf) -> Result<()> {
-    let mut tasks = get_tasks(file_path)?;
+    let mut tasks = get_tasks(file_path)?
+        .into_iter()
+        .filter(|task| task.match_mode(mode) && task.match_conf(conf))
+        .collect::<Vec<_>>();
     if let Some(sort_by) = &conf.sort_by {
         match sort_by.as_str() {
             "p" | "priority" => tasks.sort_by(|a, b| b.priority.cmp(&a.priority)),
@@ -179,13 +182,12 @@ pub fn list_tasks(file_path: &PathBuf, mode: &DisplayMode, conf: &TaskConf) -> R
             _ => (),
         }
     }
+
     let mut i = tasks.len() + 1;
     let mut writer = BufWriter::new(io::stdout().lock());
     for task in tasks.iter().rev() {
-        if task.match_mode(mode) && task.match_conf(conf) {
-            i -= 1;
-            writeln!(writer, "{:3} {}", i, task)?;
-        }
+        i -= 1;
+        writeln!(writer, "{:3} {}", i, task)?;
     }
     writer.flush()?;
     Ok(())
