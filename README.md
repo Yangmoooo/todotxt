@@ -10,7 +10,7 @@
 
 任务的各字段（如果有）格式为：
 
-```
+```shell
 状态 [优先级] 内容 (创建日期) (due:截止日期) (完成日期)
 ```
 
@@ -59,11 +59,3 @@ tdt list 打招呼 --mode pcr --tag 学习 --priority B --due-to 2024-09-01 --so
 `done`、`modify`、`remove` 和 `delete` 命令参数类似于 `list`，但执行后会交互式选择任务，类似于 `yay`
 
 ![done](./screenshots/tdt-modify.png)
-
-## Next
-
-- [x] 将任务的 `#projects` 和 `@contexts` 字段改为标签 `#tags`
-- [x] 给除 `add` 外的命令添加 `Option<String>` 参数，用于搜索任务的内容
-- [x] 能按标签、优先级、截止日期筛选任务
-- [x] 能按优先级、截止日期排序任务
-- [x] 展示任务时倒序排列
