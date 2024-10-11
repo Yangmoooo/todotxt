@@ -93,7 +93,7 @@ pub enum Action {
 }
 
 #[derive(Parser)]
-#[command(name = "todotxt", version = "0.1.0", author = "Yangmoooo")]
+#[command(name = "todotxt", version = "0.3.1", author = "Yangmoooo")]
 /// 一个基于纯文本的命令行 to-do 清单，受到 todo.txt 的启发
 pub struct Args {
     #[command(subcommand)]
